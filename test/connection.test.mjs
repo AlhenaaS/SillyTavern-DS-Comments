@@ -29,7 +29,7 @@ test('classifyCustomEndpoint: loopback HTTP variants', () => {
         const policy = classifyCustomEndpoint(raw);
         assert.equal(policy.transport, 'loopback');
         assert.equal(policy.isLoopback, true);
-        assert.equal(policy.origin, raw.replace(/:5000$/, ':5000')); // URL preserves port
+        assert.equal(policy.origin, raw); // URL preserves port
         assert.ok(policy.endpointUrl.startsWith(raw));
     }
 });
