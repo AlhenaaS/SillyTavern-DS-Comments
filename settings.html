@@ -17,6 +17,16 @@
                 <span><b data-i18n="dscomments.settings.autoupdate">Auto-generate for the latest {{char}} message</b></span>
             </label>
             <label class="dsc_toggle_row">
+                <input type="checkbox" id="dsc_userposts" class="checkbox">
+                <span><b data-i18n="dscomments.settings.userPosts">Comment on {{user}} messages</b>
+                    <small class="dsc_hint" data-i18n="dscomments.settings.userPostsHint">{{user}} posts get their own feeds: they follow scroll, swipes and can be regenerated manually.</small></span>
+            </label>
+            <label class="dsc_toggle_row" id="dsc_userposts_auto_row" hidden>
+                <input type="checkbox" id="dsc_userposts_auto" class="checkbox">
+                <span><b data-i18n="dscomments.settings.userPostsAuto">Also auto-generate for {{user}} messages</b>
+                    <small class="dsc_hint" data-i18n="dscomments.settings.userPostsAutoHint">Doubles requests per turn: one for the {{user}} post, one for the {{char}} reply.</small></span>
+            </label>
+            <label class="dsc_toggle_row">
                 <input type="checkbox" id="dsc_nosave" class="checkbox">
                 <span><b data-i18n="dscomments.settings.nosave">No-save mode</b>
                     <small class="dsc_hint" data-i18n="dscomments.settings.nosaveHint">Comments are not stored; the feed updates manually or when a message generation finishes (recommended).</small></span>

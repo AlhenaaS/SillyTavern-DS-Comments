@@ -12,6 +12,8 @@ import { getProfiles, getProfileDetails } from '../connection.js';
 const FIELD_MAP = {
     dsc_enabled:        { prop: 'enabled',                     type: 'checkbox' },
     dsc_autoupdate:     { prop: 'autoUpdate',                  type: 'checkbox' },
+    dsc_userposts:      { prop: 'commentUserPosts',            type: 'checkbox' },
+    dsc_userposts_auto: { prop: 'autoUpdateUserPosts',         type: 'checkbox' },
     dsc_nosave:         { prop: 'noSaveMode',                  type: 'checkbox' },
     dsc_source:         { prop: 'apiSource',                   type: 'segmented' }, // 2 buttons: Profile / Custom
     dsc_profile:        { prop: 'profileId',                   type: 'select' },
@@ -123,6 +125,7 @@ export function syncPanelVisibility() {
     updateSourceFieldsVisibility();
     updateDepthVisibility();
     updatePastCommentsVisibility();
+    updateUserPostsVisibility();
     updateJailbreakVisibility();
     // Sound body: on load unhide it when sound is enabled, otherwise the slider/
     // list/test button stay invisible even though the checkbox is checked.
@@ -207,6 +210,11 @@ function updateDepthVisibility() {
 function updatePastCommentsVisibility() {
     const el = document.getElementById('dsc_pastcom_group');
     if (el) el.hidden = !state.settings.includePastComments;
+}
+
+function updateUserPostsVisibility() {
+    const el = document.getElementById('dsc_userposts_auto_row');
+    if (el) el.hidden = !state.settings.commentUserPosts;
 }
 
 function updateJailbreakVisibility() {

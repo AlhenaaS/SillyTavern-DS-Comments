@@ -38,6 +38,12 @@ export const defaultSettings = Object.freeze({
     autoUpdate: true,                 // regenerate commentary on AI message
     noSaveMode: false,                // don't persist commentary to chat metadata
 
+    // {{user}} posts: master switch makes user messages commentable (display,
+    // restore, navigation, manual generation); the auto toggle additionally
+    // generates on USER_MESSAGE_RENDERED. Default off: pre-feature behaviour.
+    commentUserPosts: false,
+    autoUpdateUserPosts: false,
+
     // generation source: 'profile' (Connection Manager) | 'custom' (user endpoint).
     apiSource: 'profile',
     profileId: '',                    // Connection Profile for 'profile' source
@@ -120,6 +126,12 @@ export const state = {
     pinnedFeeds: new Map(),
     navLockUntil: 0,
     qsMenuOpen: false,
+    // One-slot coalescing queue for generateFeed: a render event arriving while
+    // another generation is in flight is parked here (latest wins) and drained
+    // by the running generation's finally. Dropped on chat change. Without it
+    // an AI reply rendering during a {{user}}-post generation would be skipped
+    // entirely (generateFeed returns early when generationInProgress).
+    queuedGeneration: null,
 };
 
 // ── ST Context Helper ──
@@ -742,11 +754,17 @@ export async function showInputModal(message, defaultValue = '') {
 }
 
 // ── Message Eligibility Helpers ──
+// The commentUserPosts setting is read live (not snapshotted): toggling it in
+// the settings panel takes effect without a reload for every consumer (scroll
+// observer, restore, navigation steppers, gestures, generation targets).
+function isUserCommentable() {
+    return !!state.settings?.commentUserPosts;
+}
 export function isCommentaryDisplayEligible(msg) {
-    return !!msg && !msg.is_user && !msg.is_system;
+    return !!msg && !msg.is_system && (!msg.is_user || isUserCommentable());
 }
 export function isCommentaryGenerationEligible(msg) {
-    return !!msg && !msg.is_user && !msg.is_system && !msg.is_hidden;
+    return !!msg && !msg.is_system && !msg.is_hidden && (!msg.is_user || isUserCommentable());
 }
 
 /** Indices of display-eligible AI posts in chat order. Shared helper for

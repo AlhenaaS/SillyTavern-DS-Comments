@@ -491,6 +491,9 @@ function _fpSettingsKey(s) {
         s.apiSource, s.profileId, s.customEndpoint, s.customModel,
         s.userCount, s.contextDepth, s.includeChatHistory, s.includePersona,
         s.includeCharacterDescription, s.includePastComments, s.pastCommentsDepth,
+        // commentUserPosts changes WHICH past threads exist (user posts join
+        // the community-memory pool) — part of the prompt, so part of the key.
+        s.commentUserPosts,
         s.promptTemplate, s.enableJailbreakBlock,
         s.jailbreakRole, s.jailbreakText,
     ].join('|');
@@ -546,7 +549,20 @@ function resolveImplicitGenerationTarget(forceRegenerate, ctx) {
  */
 export async function generateFeed(targetMsgId, targetSwipeIdx, forceRegenerate = false) {
     const settings = state.settings;
-    if (state.generationInProgress) return;
+    if (state.generationInProgress) {
+        // One-slot coalescing queue: park the request (latest wins) instead of
+        // dropping it. Without this, an AI reply rendering while a {{user}}-post
+        // generation is in flight would get no auto-commentary at all. Drained
+        // by the running generation's finally on normal completion; cleared on
+        // CHAT_CHANGED so a stale request never fires into the new chat.
+        state.queuedGeneration = {
+            targetMsgId: targetMsgId !== null && targetMsgId !== undefined ? String(targetMsgId) : null,
+            targetSwipeIdx,
+            forceRegenerate: !!forceRegenerate,
+        };
+        trace(`generateFeed: busy, queued #${targetMsgId}[${targetSwipeIdx}]`);
+        return;
+    }
 
     // Resolve which post/swipe to generate for. Explicit event targets always
     // win. An explicit manual regeneration in noSave preserves the provenance
@@ -853,6 +869,17 @@ export async function generateFeed(targetMsgId, targetSwipeIdx, forceRegenerate 
             // (index.js) — same discipline, so a finally during a restore
             // window doesn't shorten it.
             state.navLockUntil = Math.max(state.navLockUntil, Date.now() + 250);
+            // Drain the one-slot queue on normal completion (owner still ours).
+            // The follow-up call sets a new generationOwner synchronously, so
+            // the UI-cleanup branch below sees a live owner and leaves the
+            // spinner/status running for the queued generation.
+            const queued = state.queuedGeneration;
+            state.queuedGeneration = null;
+            if (queued) {
+                recordEvent('log', `event=generation_queue action=drain target=#${queued.targetMsgId}[${queued.targetSwipeIdx}]`);
+                generateFeed(queued.targetMsgId, queued.targetSwipeIdx, queued.forceRegenerate)
+                    .catch(e => warn('queued generateFeed error:', e));
+            }
         }
         // UI cleanup (launcher spinner, status overlay, regen visual) must run
         // both on normal completion (owner matched -> nulled above) and on a
@@ -890,6 +917,7 @@ export const _testReleaseGenerationCleanup = typeof process !== 'undefined' && p
         state.generationInProgress = false;
         state.abortController = null;
         state.generationOwner = null;
+        state.queuedGeneration = null;
         state.generationTarget = null;
         state.generationObservedTarget = null;
         // Matches the 250ms settle buffer set in generateFeed's `finally` block.
