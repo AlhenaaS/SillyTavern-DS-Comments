@@ -9,6 +9,7 @@
  */
 
 import { state, getCtx, BASE_URL, resolveSTMacro, buildPrompt, extractText, trace, warn, error, tr, escapeHtml, isCommentaryGenerationEligible, resolveLastAIPost, beginGenerationEpoch, isEpochCurrent, pushRestoreLog, setLastFpDiag, getLastFpDiag } from './core.js';
+import { planPostImages, loadImageParts } from './images.js';
 import { PROMPT_CONTRACT } from './prompt-contract.js';
 import { renderMessages } from './renderer.js';
 import { recordEvent } from './event-log.js';
@@ -472,6 +473,17 @@ export async function getCurrentGenerationFingerprint(ctx = getCtx(), anchorMsgI
         input.includePastComments = false;
         input.pastCommentsHash = '';
     }
+    // Same image plan as generateFeed (active swipe here; generation computes
+    // the requested one — identical for the render trigger path this precheck
+    // serves). Empty hash → the fp gains no field, matching legacy behaviour.
+    const anchorMsg = anchorMsgId !== undefined && anchorMsgId !== null
+        ? ctx?.chat?.[parseInt(anchorMsgId)]
+        : null;
+    const anchorSwipeIdx = typeof anchorMsg?.swipe_id === 'number' ? anchorMsg.swipe_id : 0;
+    input.imagesHash = planPostImages(anchorMsg, anchorSwipeIdx, settings, {
+        api: input.profileApi,
+        model: input.profileModel,
+    }).hash;
     const fp = buildGenerationFingerprint(input);
     const diag = getLastFpDiag();
     _fpCacheKey = cacheKey;
@@ -494,6 +506,8 @@ function _fpSettingsKey(s) {
         // commentUserPosts changes WHICH past threads exist (user posts join
         // the community-memory pool) — part of the prompt, so part of the key.
         s.commentUserPosts,
+        // Image attach mode/detail change the imagesHash side of the fp.
+        s.includeImages, s.imageDetail,
         s.promptTemplate, s.enableJailbreakBlock,
         s.jailbreakRole, s.jailbreakText,
     ].join('|');
@@ -660,6 +674,18 @@ export async function generateFeed(targetMsgId, targetSwipeIdx, forceRegenerate 
             generationInput.includePastComments = false;
             generationInput.pastCommentsHash = '';
         }
+        // Post images: plan (sync, no fetching) rides the fingerprint so a
+        // changed/removed attachment makes the cached feed soft-stale. The
+        // actual download happens after the cache check — a cache hit must not
+        // pay for image fetches. The plan is computed against the same
+        // profile data the fp input carries (profileApi/profileModel), keeping
+        // the fp-time and attach-time decisions identical.
+        const anchorMsg = ctx.chat?.[parseInt(resolvedMsgId)];
+        const imagePlan = planPostImages(anchorMsg, resolvedSwipeIdx, settings, {
+            api: generationInput.profileApi,
+            model: generationInput.profileModel,
+        });
+        generationInput.imagesHash = imagePlan.hash;
         markPhase('fingerprint', fingerprintStartedAt);
         if (!isEpochCurrent(epoch)) {
             trace('generateFeed: discarding stale result (epoch changed during fingerprint input resolution)');
@@ -743,6 +769,31 @@ export async function generateFeed(targetMsgId, targetSwipeIdx, forceRegenerate 
         const { systemPrompt, userMessages, assistantPrefill } = assembled;
         const jailbreakBlock = assembled.jailbreakIncluded;
 
+        // Attach the anchor post's images as one trailing user message. The
+        // fetch happens HERE — after the cache check above — so a cache hit
+        // costs no downloads. Failures skip individual images; a post whose
+        // images all failed generates text-only (never aborts the run).
+        let finalUserMessages = userMessages;
+        let imagesAttached = 0;
+        if (imagePlan.attach && imagePlan.images.length) {
+            const imagesStartedAt = performance.now();
+            const imageParts = await loadImageParts(imagePlan.images, settings.imageDetail);
+            markPhase('images', imagesStartedAt);
+            if (!isEpochCurrent(epoch)) {
+                trace('generateFeed: discarding stale result (epoch changed during image load)');
+                recordStale('images');
+                return;
+            }
+            imagesAttached = imageParts.length;
+            if (imageParts.length) {
+                finalUserMessages = [...userMessages, [
+                    { type: 'text', text: `[The current chapter includes ${imageParts.length} attached image(s). The commenters can see them and react to what is shown in them, not only to the text.]` },
+                    ...imageParts,
+                ]];
+            }
+            recordEvent('log', `event=generation_images target=#${resolvedMsgId}[${resolvedSwipeIdx}] attached=${imageParts.length}/${imagePlan.images.length} detail=${settings.imageDetail === 'auto' ? 'auto' : 'low'}`);
+        }
+
         // Prompt assembly summary (block sizes only, no content).
         trace('generateFeed: prompt built', {
             anchor: `#${resolvedMsgId}[${resolvedSwipeIdx}]`,
@@ -752,7 +803,8 @@ export async function generateFeed(targetMsgId, targetSwipeIdx, forceRegenerate 
             personaIncluded: assembled.personaIncluded,
             characterIncluded: assembled.characterIncluded,
             systemChars: systemPrompt.length,
-            userChars: userMessages.reduce((total, message) => total + message.length, 0),
+            userChars: finalUserMessages.reduce((total, message) => total + (typeof message === 'string' ? message.length : message.reduce((t, p) => t + String(p?.text ?? '').length, 0)), 0),
+            imagesAttached,
             prefillChars: assistantPrefill.length,
             jailbreak: !!jailbreakBlock,
             apiSource: settings.apiSource,
@@ -761,7 +813,7 @@ export async function generateFeed(targetMsgId, targetSwipeIdx, forceRegenerate 
         const apiStartedAt = performance.now();
         let rawText;
         try {
-            rawText = await callGenerationAPI(systemPrompt, userMessages, assistantPrefill, signal);
+            rawText = await callGenerationAPI(systemPrompt, finalUserMessages, assistantPrefill, signal);
         } catch (cause) {
             const apiDurationMs = Math.round(performance.now() - apiStartedAt);
             phaseMs.api = apiDurationMs;

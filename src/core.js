@@ -69,6 +69,12 @@ export const defaultSettings = Object.freeze({
     includePastComments: false,
     pastCommentsDepth: 2,             // how many past posts' threads to include (max)
 
+    // multimodality: attach the anchor post's images to the prompt.
+    // 'off' (default — prompt and fingerprint stay byte-identical), 'auto'
+    // (only when the source model looks vision-capable), 'always'.
+    includeImages: 'off',
+    imageDetail: 'low',               // 'low' (~85 tokens/image) | 'auto' (provider decides)
+
     // prompt template: builtin 'main' (chat-styles/main.md — vibe) + user copies.
     // The contract (header + FORMAT RULES) lives in code (prompt-contract.js).
     promptTemplate: 'main',
