@@ -76,6 +76,13 @@ export const defaultSettings = Object.freeze({
     // detail is fixed 'low' (~85 tokens/image): commenters react to what is
     // shown, not reading fine print. Downscaling still applies under the hood.
 
+    // structured output (json_schema): enforce the commentary contract at the
+    // transport level — the provider must return {"comments": [...]}. 'off'
+    // (default), 'auto' (sources known to enforce json_schema natively),
+    // 'always' (also unknown custom endpoints). Never sent to sources whose
+    // server mapping prompt-hacks the schema (claude/deepseek/zai/...).
+    structuredOutput: 'off',
+
     // prompt template: builtin 'main' (chat-styles/main.md — vibe) + user copies.
     // The contract (header + FORMAT RULES) lives in code (prompt-contract.js).
     promptTemplate: 'main',
@@ -420,6 +427,9 @@ export async function loadSettings() {
     }
     if (!['off', 'auto', 'always'].includes(state.settings.includeImages)) {
         state.settings.includeImages = defaultSettings.includeImages;
+    }
+    if (!['off', 'auto', 'always'].includes(state.settings.structuredOutput)) {
+        state.settings.structuredOutput = defaultSettings.structuredOutput;
     }
     if (!state.settings.soundFiles) state.settings.soundFiles = {};
     if (!state.settings.soundId) state.settings.soundId = 'default';

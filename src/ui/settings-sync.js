@@ -28,6 +28,7 @@ const FIELD_MAP = {
     dsc_pastcom:        { prop: 'includePastComments',         type: 'checkbox' },
     dsc_pastcom_depth:  { prop: 'pastCommentsDepth',           type: 'number' },
     dsc_images:         { prop: 'includeImages',               type: 'select' },
+    dsc_structured:     { prop: 'structuredOutput',            type: 'select' },
     dsc_fontfam:        { prop: 'fontFamily',                  type: 'select' },
     dsc_fontsize:       { prop: 'fontSize',                    type: 'number' },
     dsc_launcher_mode:  { prop: 'launcherMode',                type: 'select' },

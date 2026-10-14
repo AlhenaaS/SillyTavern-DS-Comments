@@ -66,6 +66,16 @@
                 <input type="number" id="dsc_count" class="dsc_input dsc_input_num" min="1" max="100" value="5">
             </div>
 
+            <div class="dsc_field_group">
+                <span class="dsc_field_label"><span data-i18n="dscomments.settings.structured">Structured output</span></span>
+                <select id="dsc_structured" class="dsc_select">
+                    <option value="off" data-i18n="dscomments.settings.structuredOff">Off</option>
+                    <option value="auto" data-i18n="dscomments.settings.structuredAuto">Auto (supported sources)</option>
+                    <option value="always" data-i18n="dscomments.settings.structuredAlways">Always</option>
+                </select>
+                <small class="dsc_hint" data-i18n="dscomments.settings.structuredHint">Enforces the JSON contract at the API level: the model must return the comments object, so refusals and broken arrays largely disappear. Replaces the assistant-role jailbreak on supported sources.</small>
+            </div>
+
             <!-- Sound (nested) -->
             <div class="dsc_sound_controls">
                 <label class="dsc_toggle_row dsc_sound_toggle"><input type="checkbox" id="dsc_sound_enable" class="checkbox">

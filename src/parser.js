@@ -282,6 +282,13 @@ export function parseCommentary(rawText) {
         }
     }
 
+    // Structured-output mode wraps the array in an object root (json_schema
+    // forbids a bare-array root): { "comments": [...] }. Unwrap it here so the
+    // rest of the pipeline never cares which mode produced the text.
+    if (parsed && !Array.isArray(parsed) && Array.isArray(parsed.comments)) {
+        parsed = parsed.comments;
+    }
+
     if (!Array.isArray(parsed)) return null;
 
     const messages = [];

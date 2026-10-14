@@ -8,6 +8,7 @@
  */
 
 import { warn, trace, error, tr, getApiKey, state, showConfirmModal, notifyUser, persistSettingsNow, MODULE_NAME } from './core.js';
+import { structuredOutputFor, buildCommentsSchema, structuredMaxTokens } from './structured.js';
 
 let _cmReady = false;
 let _cmReadyChecked = false;
@@ -132,11 +133,20 @@ export async function generateWithProfile(profileIdOrName, systemPrompt, userMes
     ];
     if (assistantPrefill) messages.push({ role: 'assistant', content: assistantPrefill });
 
+    // Structured output: json_schema rides the 5th sendRequest argument, which
+    // CM merges into the request payload (shared.js: ...overridePayload). The
+    // ST server translates it to the provider-native structured-outputs field.
+    const profileSource = ctx.CONNECT_API_MAP?.[profile.api]?.source ?? null;
+    const structuredVariant = structuredOutputFor(state.settings, profileSource, profile.model);
+    const structured = structuredVariant ? buildCommentsSchema(structuredVariant) : null;
+
     let response;
     try {
         response = await ctx.ConnectionManagerRequestService.sendRequest(
-            profile.id, messages, undefined,
-            { stream: false, signal: signal || null, extractData: true, includePreset: false, includeInstruct: false }
+            profile.id, messages,
+            structured ? structuredMaxTokens(state.settings.userCount) : undefined,
+            { stream: false, signal: signal || null, extractData: true, includePreset: false, includeInstruct: false },
+            structured ? { json_schema: structured.json_schema } : {}
         );
     } catch (e) {
         // ConnectionManagerRequestService wraps every failure as
@@ -177,10 +187,14 @@ function extractTextFromResponse(resp) {
             const texts = resp.content.filter(b => b?.type === 'text' && typeof b.text === 'string').map(b => b.text);
             if (texts.length > 0) return texts.join('\n');
         }
+        // json_schema replies are auto-parsed by ST into an OBJECT content —
+        // re-stringify so parseCommentary's {comments} unwrap handles it.
+        if (typeof resp.content === 'object') return JSON.stringify(resp.content);
     }
     if (resp.choices?.[0]?.message?.content) {
         const c = resp.choices[0].message.content;
         if (typeof c === 'string') return c;
+        if (typeof c === 'object') return JSON.stringify(c);
     }
     if (Array.isArray(resp.candidates)) {
         const parts = resp.candidates[0]?.content?.parts;
@@ -211,6 +225,11 @@ export const lastCustomEndpointDebug = {
 let _customEndpointTimeoutMs = 300_000;
 export const _testSetCustomEndpointTimeout = (typeof process !== 'undefined' && process?.env?.NODE_TEST === '1')
     ? (ms) => { _customEndpointTimeoutMs = ms; }
+    : undefined;
+
+// Test-only: response text extraction (incl. the structured-output object case).
+export const _testExtractTextFromResponse = (typeof process !== 'undefined' && process?.env?.NODE_TEST === '1')
+    ? extractTextFromResponse
     : undefined;
 
 // ── Custom Endpoint (OpenAI-compatible) ──
@@ -326,6 +345,15 @@ export async function generateWithCustomEndpoint(systemPrompt, userMessages, ass
 
     const body = { messages, stream: false };
     if (model) body.model = model;
+
+    // Structured output for OpenAI-compatible custom endpoints. 'custom' +
+    // a Gemini-looking model id gets the loose (responseSchema-subset) variant.
+    const structuredVariant = structuredOutputFor(state.settings, 'custom', model);
+    if (structuredVariant) {
+        const structured = buildCommentsSchema(structuredVariant);
+        body.response_format = structured.response_format;
+        body.max_tokens = structuredMaxTokens(state.settings.userCount);
+    }
 
     // ── Debug: log outgoing request ──
     // Outside debug mode only metadata is kept — full prompt bodies must
