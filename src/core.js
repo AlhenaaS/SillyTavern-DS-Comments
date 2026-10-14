@@ -418,6 +418,9 @@ export async function loadSettings() {
     if (!['bar', 'floating', 'both'].includes(state.settings.launcherMode)) {
         state.settings.launcherMode = defaultSettings.launcherMode;
     }
+    if (!['off', 'auto', 'always'].includes(state.settings.includeImages)) {
+        state.settings.includeImages = defaultSettings.includeImages;
+    }
     if (!state.settings.soundFiles) state.settings.soundFiles = {};
     if (!state.settings.soundId) state.settings.soundId = 'default';
 
