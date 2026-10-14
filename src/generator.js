@@ -506,8 +506,8 @@ function _fpSettingsKey(s) {
         // commentUserPosts changes WHICH past threads exist (user posts join
         // the community-memory pool) — part of the prompt, so part of the key.
         s.commentUserPosts,
-        // Image attach mode/detail change the imagesHash side of the fp.
-        s.includeImages, s.imageDetail,
+        // Image attach mode changes the imagesHash side of the fp.
+        s.includeImages,
         s.promptTemplate, s.enableJailbreakBlock,
         s.jailbreakRole, s.jailbreakText,
     ].join('|');
@@ -777,7 +777,7 @@ export async function generateFeed(targetMsgId, targetSwipeIdx, forceRegenerate 
         let imagesAttached = 0;
         if (imagePlan.attach && imagePlan.images.length) {
             const imagesStartedAt = performance.now();
-            const imageParts = await loadImageParts(imagePlan.images, settings.imageDetail);
+            const imageParts = await loadImageParts(imagePlan.images);
             markPhase('images', imagesStartedAt);
             if (!isEpochCurrent(epoch)) {
                 trace('generateFeed: discarding stale result (epoch changed during image load)');
@@ -791,7 +791,7 @@ export async function generateFeed(targetMsgId, targetSwipeIdx, forceRegenerate 
                     ...imageParts,
                 ]];
             }
-            recordEvent('log', `event=generation_images target=#${resolvedMsgId}[${resolvedSwipeIdx}] attached=${imageParts.length}/${imagePlan.images.length} detail=${settings.imageDetail === 'auto' ? 'auto' : 'low'}`);
+            recordEvent('log', `event=generation_images target=#${resolvedMsgId}[${resolvedSwipeIdx}] attached=${imageParts.length}/${imagePlan.images.length}`);
         }
 
         // Prompt assembly summary (block sizes only, no content).

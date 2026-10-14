@@ -79,10 +79,9 @@ export function mediaIdentity(media) {
  * nothing would be attached — keeps the fingerprint byte-identical to the
  * pre-feature one for image-less posts and for includeImages='off'.
  */
-export function computeImagesHash(images, detail) {
+export function computeImagesHash(images) {
     if (!Array.isArray(images) || !images.length) return '';
-    const d = detail === 'auto' ? 'auto' : 'low';
-    return hashFingerprint(JSON.stringify([images.map(mediaIdentity), d]));
+    return hashFingerprint(JSON.stringify(images.map(mediaIdentity)));
 }
 
 /**
@@ -137,7 +136,7 @@ export function planPostImages(msg, swipeIdx, settings, profile) {
     return {
         images,
         attach,
-        hash: attach ? computeImagesHash(images, settings?.imageDetail) : '',
+        hash: attach ? computeImagesHash(images) : '',
     };
 }
 
@@ -193,9 +192,10 @@ export async function downscaleDataUrl(dataUrl) {
  * Load one attachment into an OpenAI image part. data URLs skip the network;
  * external URLs are fetched (same-origin /user/files/... is the common case;
  * CORS failures skip the image silently, mirroring ST's addImage behaviour).
+ * detail is always 'low' — see core.js defaultSettings.
  * @returns {Promise<{type:'image_url', image_url:{url:string, detail:string}}|null>}
  */
-export async function loadImagePart(image, detail) {
+export async function loadImagePart(image) {
     try {
         let dataUrl = String(image?.url ?? '');
         if (!dataUrl) return null;
@@ -205,7 +205,7 @@ export async function loadImagePart(image, detail) {
             dataUrl = await blobToDataUrl(await response.blob());
         }
         dataUrl = await downscaleDataUrl(dataUrl);
-        return { type: 'image_url', image_url: { url: dataUrl, detail: detail === 'auto' ? 'auto' : 'low' } };
+        return { type: 'image_url', image_url: { url: dataUrl, detail: 'low' } };
     } catch (e) {
         warn(`loadImagePart: skipped (${image?.url?.slice?.(0, 80) ?? '?'})`, e);
         return null;
@@ -216,9 +216,9 @@ export async function loadImagePart(image, detail) {
  * Load all planned images, skipping failures. Never throws — a post whose
  * images all failed still gets a text-only generation.
  */
-export async function loadImageParts(images, detail) {
-    const results = await Promise.allSettled(images.map(m => loadImagePart(m, detail)));
+export async function loadImageParts(images) {
+    const results = await Promise.allSettled(images.map(m => loadImagePart(m)));
     const parts = results.map(r => (r.status === 'fulfilled' ? r.value : null)).filter(Boolean);
-    trace(`loadImageParts: ${parts.length}/${images.length} attached (detail=${detail})`);
+    trace(`loadImageParts: ${parts.length}/${images.length} attached`);
     return parts;
 }

@@ -28,7 +28,6 @@ const FIELD_MAP = {
     dsc_pastcom:        { prop: 'includePastComments',         type: 'checkbox' },
     dsc_pastcom_depth:  { prop: 'pastCommentsDepth',           type: 'number' },
     dsc_images:         { prop: 'includeImages',               type: 'select' },
-    dsc_images_quality: { prop: 'imageDetail',                 type: 'select' },
     dsc_fontfam:        { prop: 'fontFamily',                  type: 'select' },
     dsc_fontsize:       { prop: 'fontSize',                    type: 'number' },
     dsc_launcher_mode:  { prop: 'launcherMode',                type: 'select' },
@@ -128,7 +127,6 @@ export function syncPanelVisibility() {
     updateDepthVisibility();
     updatePastCommentsVisibility();
     updateUserPostsVisibility();
-    updateImagesVisibility();
     updateJailbreakVisibility();
     // Sound body: on load unhide it when sound is enabled, otherwise the slider/
     // list/test button stay invisible even though the checkbox is checked.
@@ -218,11 +216,6 @@ function updatePastCommentsVisibility() {
 function updateUserPostsVisibility() {
     const el = document.getElementById('dsc_userposts_auto_row');
     if (el) el.hidden = !state.settings.commentUserPosts;
-}
-
-function updateImagesVisibility() {
-    const el = document.getElementById('dsc_images_quality_group');
-    if (el) el.hidden = !state.settings.includeImages || state.settings.includeImages === 'off';
 }
 
 function updateJailbreakVisibility() {

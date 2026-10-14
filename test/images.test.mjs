@@ -73,14 +73,12 @@ test('collectPostImages: swipe-level extra wins over message-level', () => {
 
 // ── hashing ──
 
-test('computeImagesHash: empty for no images; changes with identity set and detail', () => {
-    assert.equal(computeImagesHash([], 'low'), '');
-    const a = computeImagesHash([{ url: 'a.png' }], 'low');
-    const b = computeImagesHash([{ url: 'b.png' }], 'low');
-    const c = computeImagesHash([{ url: 'a.png' }], 'auto');
+test('computeImagesHash: empty for no images; changes with the identity set', () => {
+    assert.equal(computeImagesHash([]), '');
+    const a = computeImagesHash([{ url: 'a.png' }]);
+    const b = computeImagesHash([{ url: 'b.png' }]);
     assert.notEqual(a, b);
-    assert.notEqual(a, c);
-    assert.equal(a, computeImagesHash([{ url: 'a.png', title: 'ignored' }], 'low'));
+    assert.equal(a, computeImagesHash([{ url: 'a.png', title: 'ignored' }]));
 });
 
 test('mediaIdentity: data URLs hash by mime+length+edges, not full content', () => {
@@ -136,7 +134,7 @@ function setupImageGeneration({ extra } = {}) {
         enableJailbreakBlock: false, jailbreakRole: 'system',
         profileId: '', soundEnabled: false,
         promptTemplates: { main: 'Generate {{count}} comments.' },
-        includeImages: 'always', imageDetail: 'low',
+        includeImages: 'always',
     };
     getCtx().chat = [aiMsg('a post with a picture', extra)];
     getCtx().chatMetadata = { dscomments_commentary: { posts: {}, current: { msgId: null, swipeIdx: 0 } } };
@@ -196,14 +194,14 @@ test('generateFeed: failed image loads fall back to text-only (never abort the r
 });
 
 test('loadImageParts: skips failures, keeps good images', async () => {
-    const parts = await loadImageParts([{ url: TINY_PNG }, { url: '' }, { url: '/user/files/missing.png' }], 'low');
+    const parts = await loadImageParts([{ url: TINY_PNG }, { url: '' }, { url: '/user/files/missing.png' }]);
     assert.equal(parts.length, 1);
     assert.equal(parts[0].type, 'image_url');
 });
 
 test('planPostImages: hash only when attaching; collect-independent of mode', () => {
     const msg = aiMsg('p', { media: [img('a.png')] });
-    const on = planPostImages(msg, 0, { apiSource: 'custom', customModel: 'gpt-4o', includeImages: 'always', imageDetail: 'low' }, null);
+    const on = planPostImages(msg, 0, { apiSource: 'custom', customModel: 'gpt-4o', includeImages: 'always' }, null);
     assert.equal(on.attach, true);
     assert.ok(on.hash);
     const off = planPostImages(msg, 0, { apiSource: 'custom', customModel: 'gpt-4o', includeImages: 'off' }, null);
