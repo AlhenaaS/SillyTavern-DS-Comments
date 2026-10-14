@@ -124,13 +124,41 @@ export function shouldAttachImages(settings, profile) {
 }
 
 /**
+ * Image-generation extensions (sillyimages etc.) embed pictures as inline
+ * `<img src="...">` tags in the message TEXT — they never reach extra.media.
+ * Scan the raw text for them. Bounded by MAX_IMAGES_PER_POST.
+ */
+export function collectInlineImageUrls(rawText) {
+    if (typeof rawText !== 'string' || !rawText) return [];
+    const urls = [];
+    for (const m of rawText.matchAll(/<img\b[^>]*?\bsrc\s*=\s*["']([^"']+)["'][^>]*>/gi)) {
+        const url = m[1].trim();
+        if (url) urls.push(url);
+        if (urls.length >= MAX_IMAGES_PER_POST) break;
+    }
+    return urls;
+}
+
+/**
  * Resolve the image plan for a generation: which images the anchor post
  * carries and whether to attach them. Synchronous and cheap — safe to call
  * for fingerprint computation on every render pre-check.
+ * Sources: extra.media (native attachments) + inline <img> tags in the raw
+ * swipe text (sillyimages-style embeds), deduped by URL, capped at the max.
  * @returns {{ images: {url:string,title:string}[], attach: boolean, hash: string }}
  */
 export function planPostImages(msg, swipeIdx, settings, profile) {
     const images = collectPostImages(msg, swipeIdx);
+    const idx = Number.isInteger(Number(swipeIdx)) ? Number(swipeIdx) : 0;
+    const rawText = Array.isArray(msg?.swipes) && msg.swipes[idx] !== undefined
+        ? String(msg.swipes[idx])
+        : String(msg?.mes ?? '');
+    const seen = new Set(images.map(i => i.url));
+    for (const url of collectInlineImageUrls(rawText)) {
+        if (seen.has(url) || images.length >= MAX_IMAGES_PER_POST) continue;
+        seen.add(url);
+        images.push({ url, title: '' });
+    }
     if (!images.length) return { images: [], attach: false, hash: '' };
     const attach = shouldAttachImages(settings, profile);
     return {

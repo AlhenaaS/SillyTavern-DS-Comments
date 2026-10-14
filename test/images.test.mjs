@@ -11,7 +11,7 @@ import test, { beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { state, getCtx } from '../src/core.js';
 import {
-    collectPostImages, computeImagesHash, mediaIdentity, shouldAttachImages,
+    collectPostImages, collectInlineImageUrls, computeImagesHash, mediaIdentity, shouldAttachImages,
     planPostImages, loadImageParts, MAX_IMAGES_PER_POST,
 } from '../src/images.js';
 import { buildGenerationFingerprint, buildGenerationFingerprintInput } from '../src/lorebooks.js';
@@ -209,4 +209,29 @@ test('planPostImages: hash only when attaching; collect-independent of mode', ()
     assert.equal(off.hash, '');
     const none = planPostImages(aiMsg('p'), 0, { includeImages: 'always' }, null);
     assert.deepEqual(none, { images: [], attach: false, hash: '' });
+});
+
+// ── inline <img> tags in the message text (sillyimages-style embeds) ──
+
+test('collectInlineImageUrls: extracts src from img tags, caps at max, tolerates junk', () => {
+    assert.deepEqual(collectInlineImageUrls('no images here'), []);
+    assert.deepEqual(collectInlineImageUrls(null), []);
+    const text = `text <img src="/user/files/a.png" data-iig-instruction='x'> more <img class="q" src = "b.png"/> <video poster="p.png"></video>`;
+    assert.deepEqual(collectInlineImageUrls(text), ['/user/files/a.png', 'b.png'], 'img src only; video poster ignored');
+    const many = Array.from({ length: 9 }, (_, i) => `<img src="u${i}.png">`).join(' ');
+    assert.equal(collectInlineImageUrls(many).length, MAX_IMAGES_PER_POST);
+});
+
+test('planPostImages: inline images merge with extra.media, deduped by URL, capped', () => {
+    const msg = aiMsg(`text <img src="a.png"> <img src="b.png">`, { media: [img('a.png'), img('c.png')] });
+    const plan = planPostImages(msg, 0, { apiSource: 'custom', customModel: 'gpt-4o', includeImages: 'always' }, null);
+    assert.deepEqual(plan.images.map(i => i.url), ['a.png', 'c.png', 'b.png'], 'extra.media first, inline after, no duplicates');
+    assert.ok(plan.hash);
+});
+
+test('planPostImages: inline images are read from the REQUESTED swipe, not the active one', () => {
+    const msg = aiMsg('swipe zero <img src="s0.png">');
+    msg.swipes = ['swipe zero <img src="s0.png">', 'swipe one <img src="s1.png">'];
+    const plan = planPostImages(msg, 1, { apiSource: 'custom', customModel: 'gpt-4o', includeImages: 'always' }, null);
+    assert.deepEqual(plan.images.map(i => i.url), ['s1.png']);
 });
