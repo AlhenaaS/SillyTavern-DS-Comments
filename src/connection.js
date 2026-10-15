@@ -145,7 +145,13 @@ export async function generateWithProfile(profileIdOrName, systemPrompt, userMes
         response = await ctx.ConnectionManagerRequestService.sendRequest(
             profile.id, messages,
             structured ? structuredMaxTokens(state.settings.userCount) : undefined,
-            { stream: false, signal: signal || null, extractData: true, includePreset: false, includeInstruct: false },
+            // extractData:false in structured mode: CM's extraction turns the
+            // response into JSON.parse(extractJsonFromData(...)), which returns
+            // {} for ANY non-pure-JSON output — prose wrappers, code fences, a
+            // content_filter-truncated body — discarding every comment the
+            // model did produce (surfaced as a 2-char "{}" response). The raw
+            // response lets parser.js's repair ladder salvage what survived.
+            { stream: false, signal: signal || null, extractData: !structured, includePreset: false, includeInstruct: false },
             structured ? { json_schema: structured.json_schema } : {}
         );
     } catch (e) {
