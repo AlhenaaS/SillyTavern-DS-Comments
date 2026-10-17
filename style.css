@@ -423,7 +423,7 @@
     /* #qr--bar is display:flex with flex-wrap:wrap. Be a fixed-size flex item so
        the launcher never grows/shrinks or forces siblings to wrap on mobile. */
     flex: 0 0 auto;
-    min-width: 40px; min-height: 36px; padding: 0 10px !important;
+    width: 36px; height: 36px; padding: 0 !important;
     border-radius: 8px; cursor: pointer; user-select: none;
     color: var(--SmartThemeBodyColor, rgba(255, 255, 255, 0.82));
     background: rgba(255, 255, 255, 0.06);
