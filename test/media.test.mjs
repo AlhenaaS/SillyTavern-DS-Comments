@@ -2,7 +2,7 @@
 /**
  * DS Comments — comment media attachments tests.
  *
- * Covers src/media.js (Tenor/Giphy searches, memegen templates + URL building,
+ * Covers src/media.js (Giphy search, memegen templates + URL building,
  * URL allowlist, per-feed cache, failure degradation) plus the parser/renderer
  * integration for the media request fields.
  */
@@ -38,19 +38,19 @@ beforeEach(() => {
 
 // ── isAllowedMediaUrl ──
 
-test('allowlist: accepts Tenor/Giphy/memegen CDN URLs', () => {
-    assert.equal(isAllowedMediaUrl('https://media.tenor.com/abc/xyz.gif'), true);
-    assert.equal(isAllowedMediaUrl('https://media1.tenor.com/abc/xyz.gif'), true);
-    assert.equal(isAllowedMediaUrl('https://media.tenor.com/abc/xyz.gif|c'), true);   // c := confused suffix variant
+test('allowlist: accepts Giphy/memegen CDN URLs', () => {
     assert.equal(isAllowedMediaUrl('https://media2.giphy.com/media/abc/giphy.gif'), true);
+    assert.equal(isAllowedMediaUrl('https://media.giphy.com/media/abc/giphy-downsized.gif'), true);
     assert.equal(isAllowedMediaUrl('https://i.giphy.com/abc.gif'), true);
     assert.equal(isAllowedMediaUrl('https://api.memegen.link/images/drake/a/b.png'), true);
 });
 
 test('allowlist: rejects everything else', () => {
-    assert.equal(isAllowedMediaUrl('http://media.tenor.com/abc.gif'), false);         // not https
-    assert.equal(isAllowedMediaUrl('https://evil.tenor.com.evil.com/a.gif'), false);  // suffix spoof
-    assert.equal(isAllowedMediaUrl('https://media.tenor.com.evil.com/a.gif'), false);
+    assert.equal(isAllowedMediaUrl('http://media.giphy.com/abc.gif'), false);          // not https
+    assert.equal(isAllowedMediaUrl('https://media.giphy.com.evil.com/a.gif'), false);  // suffix spoof
+    // Tenor was dropped from the provider set (API closed 2026-06-30) — its CDN
+    // must not be renderable either, in case an old cached feed carries one.
+    assert.equal(isAllowedMediaUrl('https://media1.tenor.com/abc/xyz.gif'), false);
     assert.equal(isAllowedMediaUrl('https://example.com/a.gif'), false);
     assert.equal(isAllowedMediaUrl('javascript:alert(1)'), false);
     assert.equal(isAllowedMediaUrl(''), false);
@@ -133,45 +133,7 @@ test('meme URL building: 1/2/3-line templates, single encoding', () => {
     assert.equal(buildMemeUrl(null, { template: 'x' }), null);
 });
 
-// ── Tenor / Giphy searches ──
-
-test('resolveCommentMedia: Tenor search resolves gif + sticker with formats', async () => {
-    fetchHandler = (url) => {
-        if (url.startsWith('https://tenor.googleapis.com/v2/search')) {
-            const u = new URL(url);
-            const sticker = (u.searchParams.get('media_filter') || '').includes('transparent');
-            return {
-                ok: true,
-                json: async () => ({
-                    results: [{
-                        media_formats: sticker
-                            ? { gif_transparent: { url: 'https://media.tenor.com/s/sticker.gif' } }
-                            : { mediumgif: { url: 'https://media.tenor.com/g/clip.gif' } },
-                    }],
-                }),
-            };
-        }
-        return { ok: false, status: 404, json: async () => ({}) };
-    };
-    const messages = [
-        { username: 'a', content: 'wow', gif: 'cat shocked' },
-        { username: 'b', content: ':)', sticker: 'thumbs up' },
-    ];
-    const n = await resolveCommentMedia(messages, {
-        provider: 'tenor', tenorKey: 'K', giphyKey: '', rating: 'medium',
-        stickersEnabled: true, memeEnabled: false,
-    });
-    assert.equal(n, 2);
-    assert.equal(messages[0].media.type, 'gif');
-    assert.equal(messages[0].media.url, 'https://media.tenor.com/g/clip.gif');
-    assert.equal(messages[1].media.type, 'sticker');
-    assert.equal(messages[1].media.url, 'https://media.tenor.com/s/sticker.gif');
-    const first = fetchCalls[0];
-    assert.ok(first.url.includes('key=K'));
-    assert.ok(first.url.includes('client_key=dscomments'));
-    assert.ok(first.url.includes('rating=medium'));
-    assert.ok(first.url.includes('media_filter=mediumgif%2Cgif%2Ctinygif'));
-});
+// ── Giphy search ──
 
 test('resolveCommentMedia: Giphy rating mapping and sticker endpoint', async () => {
     fetchHandler = (url) => {
@@ -199,7 +161,7 @@ test('resolveCommentMedia: Giphy rating mapping and sticker endpoint', async () 
 
 test('resolveCommentMedia: no key or disabled provider → text-only, no fetches', async () => {
     const messages = [{ username: 'a', content: 'x', gif: 'cat' }];
-    const n = await resolveCommentMedia(messages, { provider: 'tenor', tenorKey: '', rating: 'medium' });
+    const n = await resolveCommentMedia(messages, { provider: 'giphy', giphyKey: '', rating: 'medium' });
     assert.equal(n, 0);
     assert.equal(messages[0].media, undefined);
     assert.equal(fetchCalls.length, 0);
@@ -211,22 +173,22 @@ test('resolveCommentMedia: no key or disabled provider → text-only, no fetches
 test('resolveCommentMedia: provider failure / empty results degrade to text-only', async () => {
     fetchHandler = () => ({ ok: false, status: 500, json: async () => ({}) });
     const messages = [{ username: 'a', content: 'x', gif: 'cat' }];
-    const n = await resolveCommentMedia(messages, { provider: 'tenor', tenorKey: 'K', rating: 'medium' });
+    const n = await resolveCommentMedia(messages, { provider: 'giphy', giphyKey: 'G', rating: 'medium' });
     assert.equal(n, 0);
     assert.equal(messages[0].media, undefined);
-    // HTTP 200 but zero usable results
-    fetchHandler = () => ({ ok: true, json: async () => ({ results: [] }) });
-    const n2 = await resolveCommentMedia([{ username: 'a', content: 'y', gif: 'dog' }], { provider: 'tenor', tenorKey: 'K', rating: 'medium' });
+    // HTTP 200 but zero usable results (Giphy payload shape)
+    fetchHandler = () => ({ ok: true, json: async () => ({ data: [] }) });
+    const n2 = await resolveCommentMedia([{ username: 'a', content: 'y', gif: 'dog' }], { provider: 'giphy', giphyKey: 'G', rating: 'medium' });
     assert.equal(n2, 0);
 });
 
 test('resolveCommentMedia: non-allowlisted provider URL is dropped', async () => {
     fetchHandler = () => ({
         ok: true,
-        json: async () => ({ results: [{ media_formats: { gif: { url: 'https://evil.example.com/x.gif' } } }] }),
+        json: async () => ({ data: [{ images: { downsized: { url: 'https://evil.example.com/x.gif' } } }] }),
     });
     const messages = [{ username: 'a', content: 'x', gif: 'cat' }];
-    const n = await resolveCommentMedia(messages, { provider: 'tenor', tenorKey: 'K', rating: 'medium' });
+    const n = await resolveCommentMedia(messages, { provider: 'giphy', giphyKey: 'G', rating: 'medium' });
     assert.equal(n, 0);
     assert.equal(messages[0].media, undefined);
 });
@@ -234,13 +196,13 @@ test('resolveCommentMedia: non-allowlisted provider URL is dropped', async () =>
 test('resolveCommentMedia: identical queries share one fetch (per-feed cache)', async () => {
     fetchHandler = () => ({
         ok: true,
-        json: async () => ({ results: [{ media_formats: { gif: { url: 'https://media.tenor.com/g.gif' } } }] }),
+        json: async () => ({ data: [{ images: { downsized: { url: 'https://media.giphy.com/g.gif' } } }] }),
     });
     const messages = [
         { username: 'a', content: 'x', gif: 'Cat SHOCKED' },
         { username: 'b', content: 'y', gif: 'cat shocked' },
     ];
-    const n = await resolveCommentMedia(messages, { provider: 'tenor', tenorKey: 'K', rating: 'medium' });
+    const n = await resolveCommentMedia(messages, { provider: 'giphy', giphyKey: 'G', rating: 'medium' });
     assert.equal(n, 2);
     assert.equal(fetchCalls.length, 1);
 });
@@ -254,11 +216,11 @@ test('resolveCommentMedia: abort propagates', async () => {
             e.name = 'AbortError';
             return Promise.reject(e);
         }
-        return Promise.resolve({ ok: true, json: async () => ({ results: [] }) });
+        return Promise.resolve({ ok: true, json: async () => ({ data: [] }) });
     };
     await assert.rejects(
         resolveCommentMedia([{ username: 'a', content: 'x', gif: 'cat' }], {
-            provider: 'tenor', tenorKey: 'K', rating: 'medium', signal: controller.signal,
+            provider: 'giphy', giphyKey: 'G', rating: 'medium', signal: controller.signal,
         }),
         (e) => e?.name === 'AbortError',
     );

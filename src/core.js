@@ -20,10 +20,9 @@ export const META_KEY = 'dscomments_commentary';
 // localforage key prefixes (prompt templates, api key, sound blobs).
 export const LF_PROMPTS = 'DSComments_prompts';
 export const LF_API_KEY = 'DSComments_apiKey';
-// localforage keys for comment-media provider API keys (Tenor/Giphy) — the
+// localforage key for the comment-media provider API key (Giphy) — the
 // same out-of-settings treatment as LF_API_KEY: secrets never enter the
 // server-synced settings JSON.
-export const LF_TENOR_KEY = 'DSComments_tenorKey';
 export const LF_GIPHY_KEY = 'DSComments_giphyKey';
 export const LF_SOUND = 'DSComments_sound_';
 // localforage key for the noSave pinned-feeds store (one record, Object chatId->feed).
@@ -90,9 +89,9 @@ export const defaultSettings = Object.freeze({
 
     // comment media attachments (AI commenters react with GIFs/stickers/memes).
     // mediaProvider: GIF/sticker search backend — 'off' (default: prompt and
-    // fingerprint stay byte-identical), 'tenor', 'giphy'. mediaRating is the
+    // fingerprint stay byte-identical) or 'giphy'. mediaRating is the
     // coarse content filter ('off' = unfiltered). mediaStickers adds the
-    // transparent-sticker search (needs a provider); mediaMemes lets commenters
+    // transparent-sticker search; mediaMemes lets commenters
     // compose their own memes via memegen.link (keyless).
     mediaProvider: 'off',
     mediaRating: 'medium',
@@ -447,7 +446,7 @@ export async function loadSettings() {
     if (!['off', 'auto', 'always'].includes(state.settings.structuredOutput)) {
         state.settings.structuredOutput = defaultSettings.structuredOutput;
     }
-    if (!['off', 'tenor', 'giphy'].includes(state.settings.mediaProvider)) {
+    if (!['off', 'giphy'].includes(state.settings.mediaProvider)) {
         state.settings.mediaProvider = defaultSettings.mediaProvider;
     }
     if (!['off', 'low', 'medium', 'high'].includes(state.settings.mediaRating)) {
@@ -761,55 +760,36 @@ export function flushApiKey() {
     return _persistApiKey.flush?.();
 }
 
-// ── Media provider key storage (Tenor/Giphy; same contract as LF_API_KEY) ──
+// ── Media provider key storage (Giphy; same contract as LF_API_KEY) ──
 
-const _mediaKeyCaches = { tenor: null, giphy: null };
-const MEDIA_KEY_LF = { tenor: LF_TENOR_KEY, giphy: LF_GIPHY_KEY };
+let _giphyKeyCache = null;
 
-export async function getMediaProviderKey(provider) {
-    const p = provider === 'giphy' ? 'giphy' : 'tenor';
-    if (_mediaKeyCaches[p] !== null) return _mediaKeyCaches[p];
+export async function getGiphyKey() {
+    if (_giphyKeyCache !== null) return _giphyKeyCache;
     try {
-        _mediaKeyCaches[p] = (await SillyTavern.libs.localforage.getItem(MEDIA_KEY_LF[p])) || '';
-        return _mediaKeyCaches[p];
+        _giphyKeyCache = (await SillyTavern.libs.localforage.getItem(LF_GIPHY_KEY)) || '';
+        return _giphyKeyCache;
     } catch { return ''; }
 }
 
-const _persistMediaKey = {
-    tenor: debounce(async () => {
-        try {
-            const v = _mediaKeyCaches.tenor;
-            if (v) await SillyTavern.libs.localforage.setItem(LF_TENOR_KEY, v);
-            else   await SillyTavern.libs.localforage.removeItem(LF_TENOR_KEY);
-        } catch (cause) {
-            error('Tenor key persistence failed:', cause);
-            notifyUser('error', tr('Could not save the Tenor API key.', 'dscomments.media.keySaveError'), 'tenor-key-save');
-        }
-    }, 400),
-    giphy: debounce(async () => {
-        try {
-            const v = _mediaKeyCaches.giphy;
-            if (v) await SillyTavern.libs.localforage.setItem(LF_GIPHY_KEY, v);
-            else   await SillyTavern.libs.localforage.removeItem(LF_GIPHY_KEY);
-        } catch (cause) {
-            error('Giphy key persistence failed:', cause);
-            notifyUser('error', tr('Could not save the Giphy API key.', 'dscomments.media.keySaveError'), 'giphy-key-save');
-        }
-    }, 400),
-};
+const _persistGiphyKey = debounce(async () => {
+    try {
+        if (_giphyKeyCache) await SillyTavern.libs.localforage.setItem(LF_GIPHY_KEY, _giphyKeyCache);
+        else await SillyTavern.libs.localforage.removeItem(LF_GIPHY_KEY);
+    } catch (cause) {
+        error('Giphy key persistence failed:', cause);
+        notifyUser('error', tr('Could not save the Giphy API key.', 'dscomments.media.keySaveError'), 'giphy-key-save');
+    }
+}, 400);
 
-export function setMediaProviderKey(provider, key) {
-    const p = provider === 'giphy' ? 'giphy' : 'tenor';
-    _mediaKeyCaches[p] = key || '';
-    _persistMediaKey[p]();
+export function setGiphyKey(key) {
+    _giphyKeyCache = key || '';
+    _persistGiphyKey();
 }
 
-/** Flush both pending media key writes (blur / visibilitychange). */
-export function flushMediaProviderKeys() {
-    return Promise.all([
-        _persistMediaKey.tenor.flush?.(),
-        _persistMediaKey.giphy.flush?.(),
-    ]);
+/** Flush the pending giphy-key write (blur / visibilitychange). */
+export function flushGiphyKey() {
+    return _persistGiphyKey.flush?.();
 }
 
 // ── Confirmation Modal (via ST context; native confirm as last-resort fallback) ──

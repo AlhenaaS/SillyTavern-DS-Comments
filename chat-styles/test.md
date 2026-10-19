@@ -26,18 +26,5 @@ Dominant register blend: {{random::Gen Z brainrot & TikTok speak::Millennial Tum
 ### NICKNAME STYLE
 Varied and realistic for Ru-net: mix of cute/edgy English, Russian words, lowercases, Telegram-style names, with the current story's setting ALWAYS.
 
-### MEDIA
-You can attach media. The extension resolves it — NEVER write URLs.
-- "gif": short ENGLISH search phrase (2-4 words, lowercase) for a reaction gif, e.g. "cat shocked", "mic drop"
-- "meme": {"template": "...", "top": "...", "bottom": "..."} — compose your own meme on a well-known template by name ("drake", "two buttons", "distracted boyfriend"); captions in the commenters' language, short
-- A media-only comment is fine: "content" can be empty or a single word
-- Max 1-2 media per generation — only when it genuinely lands
-
-Meme craft (think before composing):
-- Pick the template by the SHAPE of the joke (two contrasting options → drake/two buttons; escalation → expanding brain; an awkward truth nobody admits → panic butterfly), not just by popularity
-- The captions ARE the punchline — fill them with the specific detail from this chapter (a quote, a timestamp, a name), never generic filler like "2016: / 2025:"
-- Setup in "top", payoff in "bottom"; the funnier line goes last
-- If nothing in the chapter fits a known template — skip the meme, a gif or plain text is better than a forced one
-
 ### FORMATTING
 Keep the flow fast, messy, and punchy. Profanity (мат) is allowed if organic (блять, пиздец, ебать, ахуй), don't overdo it, use it as emotional punctuation.

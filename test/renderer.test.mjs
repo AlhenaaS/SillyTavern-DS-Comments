@@ -176,9 +176,9 @@ test('hashHue consistency: same username → same inline --dsc-nick-hue value', 
 // ── media placeholders ──
 
 test('message with media renders a placeholder div with data attributes', () => {
-    const html = renderMessages([msg({ media: { type: 'gif', url: 'https://media.tenor.com/a.gif', alt: 'cat' } })]);
+    const html = renderMessages([msg({ media: { type: 'gif', url: 'https://media.giphy.com/a.gif', alt: 'cat' } })]);
     assert.match(html, /class="dsc_gif"/);
-    assert.match(html, /data-dsc-media-src="https:\/\/media\.tenor\.com\/a\.gif"/);
+    assert.match(html, /data-dsc-media-src="https:\/\/media\.giphy\.com\/a\.gif"/);
     assert.match(html, /data-dsc-media-type="gif"/);
     assert.match(html, /data-dsc-media-alt="cat"/);
     assert.ok(!html.includes('<img'));
@@ -209,14 +209,14 @@ function makePlaceholder(attrs) {
 
 test('upgradeMediaPlaceholders: upgrades placeholder to img with allowlisted URL', () => {
     const placeholder = makePlaceholder({
-        'data-dsc-media-src': 'https://media.tenor.com/a.gif',
+        'data-dsc-media-src': 'https://media.giphy.com/a.gif',
         'data-dsc-media-type': 'gif',
         'data-dsc-media-alt': 'cat',
     });
     const feed = { querySelectorAll: (sel) => sel === '[data-dsc-media-src]' ? [placeholder] : [] };
     assert.equal(upgradeMediaPlaceholders(feed), 1);
     assert.ok(placeholder.child);
-    assert.equal(placeholder.child.src, 'https://media.tenor.com/a.gif');
+    assert.equal(placeholder.child.src, 'https://media.giphy.com/a.gif');
     assert.equal(placeholder.child.alt, 'cat');
 });
 
@@ -255,7 +255,7 @@ test('failed media with text present stays text-only (no duplicate bracket)', ()
 });
 
 test('resolved media renders placeholder, not fallback', () => {
-    const html = renderMessages([msg({ content: '', media: { type: 'gif', url: 'https://media.tenor.com/a.gif' } })]);
+    const html = renderMessages([msg({ content: '', media: { type: 'gif', url: 'https://media.giphy.com/a.gif' } })]);
     assert.match(html, /data-dsc-media-src/);
     assert.ok(!html.includes('dsc_media_fallback'));
 });

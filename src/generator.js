@@ -8,7 +8,7 @@
  * source block as its own user message (see assemblePrompt).
  */
 
-import { state, getCtx, BASE_URL, resolveSTMacro, buildPrompt, extractText, trace, warn, error, tr, escapeHtml, isCommentaryGenerationEligible, resolveLastAIPost, beginGenerationEpoch, isEpochCurrent, pushRestoreLog, setLastFpDiag, getLastFpDiag, getMediaProviderKey } from './core.js';
+import { state, getCtx, BASE_URL, resolveSTMacro, buildPrompt, extractText, trace, warn, error, tr, escapeHtml, isCommentaryGenerationEligible, resolveLastAIPost, beginGenerationEpoch, isEpochCurrent, pushRestoreLog, setLastFpDiag, getLastFpDiag, getGiphyKey } from './core.js';
 import { planPostImages, loadImageParts } from './images.js';
 import { PROMPT_CONTRACT, buildContract } from './prompt-contract.js';
 import { resolveCommentMedia } from './media.js';
@@ -329,9 +329,7 @@ function assemblePrompt(parts) {
  * the contract only when a usable provider is configured.
  */
 function mediaFeatures(settings) {
-    const provider = settings.mediaProvider === 'tenor' || settings.mediaProvider === 'giphy'
-        ? settings.mediaProvider
-        : '';
+    const provider = settings.mediaProvider === 'giphy' ? 'giphy' : '';
     return {
         provider,
         gif: !!provider,
@@ -897,8 +895,7 @@ export async function generateFeed(targetMsgId, targetSwipeIdx, forceRegenerate 
             if (media.gif || media.sticker || media.meme) {
                 const attached = await resolveCommentMedia(messages, {
                     provider: media.provider,
-                    tenorKey: await getMediaProviderKey('tenor'),
-                    giphyKey: await getMediaProviderKey('giphy'),
+                    giphyKey: await getGiphyKey(),
                     rating: settings.mediaRating,
                     stickersEnabled: media.sticker,
                     memeEnabled: media.meme,

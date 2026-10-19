@@ -34,7 +34,7 @@ beforeEach(() => {
     Object.assign(ctx, { chatId: 'chatMedia', chat: [aiMsg('a post')], chatMetadata: {}, saveMetadata: () => {}, name1: 'User', name2: 'Char', substituteParams: t => t });
     _resetFeedFileStore();
     globalThis._stFilesReset?.();
-    // Keys present: giphy key persisted, tenor empty.
+    // Giphy key persisted in localforage.
     globalThis.SillyTavern.libs.localforage = {
         getItem: async (k) => (k === 'DSComments_giphyKey' ? 'TESTKEY' : null),
         setItem: async () => {},

@@ -159,17 +159,16 @@
                     </select>
                     <small class="dsc_hint" data-i18n="dscomments.settings.imagesHint">Images of the commented post are attached to the prompt — commenters react to what is shown. Auto attaches only when the model looks vision-capable. Images are sent to the selected comments source, which may differ from your main chat API.</small>
                 </div>
-                <!-- Comment media: GIFs/stickers via Tenor or Giphy, memes via memegen.link.
+                <!-- Comment media: GIFs/stickers via Giphy, memes via memegen.link.
                      The model outputs a search query / meme recipe; the extension resolves
                      allow-listed CDN URLs. -->
                 <div class="dsc_field_group">
                     <span class="dsc_field_label"><i class="fa-solid fa-film fa-fw"></i> <span data-i18n="dscomments.settings.media">Comment GIFs and memes</span></span>
                     <select id="dsc_media_provider" class="dsc_select">
                         <option value="off" data-i18n="dscomments.settings.mediaOff">Off</option>
-                        <option value="giphy" data-i18n="dscomments.settings.mediaGiphy">Giphy (recommended)</option>
-                        <option value="tenor" data-i18n="dscomments.settings.mediaTenor">Tenor (legacy)</option>
+                        <option value="giphy" data-i18n="dscomments.settings.mediaGiphy">Giphy</option>
                     </select>
-                    <small class="dsc_hint" data-i18n="dscomments.settings.mediaHint">Commenters can attach reaction GIFs and stickers from the selected provider. You need a free API key (Tenor: Google Cloud, Giphy: developers.giphy.com). The model never outputs URLs — the extension searches and attaches them itself.</small>
+                    <small class="dsc_hint" data-i18n="dscomments.settings.mediaHint">Commenters can attach reaction GIFs and stickers from Giphy. You need a free API key (developers.giphy.com). The model never outputs URLs — the extension searches and attaches them itself.</small>
                     <div id="dsc_media_provider_body" hidden>
                         <span class="dsc_field_label" data-i18n="dscomments.settings.mediaRating">Content rating</span>
                         <select id="dsc_media_rating" class="dsc_select">
@@ -179,9 +178,6 @@
                             <option value="high" data-i18n="dscomments.settings.mediaRatingHigh">High</option>
                         </select>
                         <label class="dsc_toggle_row"><input type="checkbox" id="dsc_media_stickers" class="checkbox"> <span data-i18n="dscomments.settings.mediaStickers">Stickers (transparent)</span></label>
-                        <span class="dsc_field_label" id="dsc_media_tenor_key_label" data-i18n="dscomments.settings.mediaTenorKey">Tenor API key</span>
-                        <input type="password" id="dsc_media_tenor_key" class="dsc_input" placeholder="AIza..." autocomplete="off">
-                        <small class="dsc_hint" id="dsc_media_tenor_note" data-i18n="dscomments.settings.mediaTenorNote">Tenor is shutting down its third-party API (requests fail after 30.06.2026) — pick Tenor only if you still have a working legacy key.</small>
                         <span class="dsc_field_label" id="dsc_media_giphy_key_label" data-i18n="dscomments.settings.mediaGiphyKey">Giphy API key</span>
                         <input type="password" id="dsc_media_giphy_key" class="dsc_input" placeholder="dc6za..." autocomplete="off">
                     </div>

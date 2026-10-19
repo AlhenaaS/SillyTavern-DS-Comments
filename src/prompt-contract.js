@@ -66,6 +66,7 @@ const MEME_SECTION = `
 ## MEME ATTACHMENTS (optional)
 
 - "meme": optional object {"template": "...", "top": "...", "bottom": "..."} — the meme YOU compose: pick a well-known template by name (e.g. "drake", "two buttons", "distracted boyfriend") and write the caption lines yourself
+- Pick the template by the SHAPE of the joke (two contrasting options → drake / two buttons; escalation → expanding brain), not just popularity — and fill the captions with a SPECIFIC detail from the current scene, never generic filler. If nothing fits, skip the meme
 - "top" is the text above the image, "bottom" below; either may be "" for one-panel templates
 - Write captions in the commenters' language; keep each line short (max ~60 chars)
 - Same discipline: sparingly, at most 1-2 memes per generation, no URLs

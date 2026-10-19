@@ -2,12 +2,12 @@
 /**
  * DS Comments — settings wiring regression tests (source-level).
  *
- * The media provider API keys (dsc_media_tenor_key / dsc_media_giphy_key) are
- * localforage-backed password fields and are deliberately NOT registered in
- * FIELD_MAP. Their input/change handlers in index.js must therefore run
- * BEFORE the `if (!cfg) return;` FIELD_MAP gate — a regression here silently
- * drops every keystroke and the resolver runs with an empty key (observed
- * live: Giphy selected + key typed, comments still rendered text-only).
+ * The media provider API key (dsc_media_giphy_key) is a localforage-backed
+ * password field and is deliberately NOT registered in FIELD_MAP. Its
+ * input/change handlers in index.js must therefore run BEFORE the
+ * `if (!cfg) return;` FIELD_MAP gate — a regression here silently drops every
+ * keystroke and the resolver runs with an empty key (observed live: Giphy
+ * selected + key typed, comments still rendered text-only).
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -27,32 +27,26 @@ function gateIndexAfter(anchor) {
     return gate;
 }
 
-test('input handler: media key setters run BEFORE the FIELD_MAP gate', () => {
-    // The gate found after the first (change) handler also guards the second;
-    // anchor both handlers separately via their setApiKey lines.
+test('input handler: media key setter runs BEFORE the FIELD_MAP gate', () => {
     const setInput = src.indexOf("if (el.id === 'dsc_apikey') { setApiKey(el.value); return; }");
     assert.ok(setInput !== -1, 'input apikey handler not found');
     const gate = src.lastIndexOf("const cfg = FIELD_MAP[el.id];\n        if (!cfg) return;", setInput);
-    const tenor = src.indexOf("setMediaProviderKey('tenor', el.value)");
-    const giphy = src.indexOf("setMediaProviderKey('giphy', el.value)");
-    assert.ok(tenor !== -1 && giphy !== -1, 'media key setters not wired');
-    assert.ok(tenor < gate && giphy < gate, 'setMediaProviderKey calls must precede the FIELD_MAP gate');
+    const giphy = src.indexOf("setGiphyKey(el.value)");
+    assert.ok(giphy !== -1, 'media key setter not wired');
+    assert.ok(giphy < gate, 'setGiphyKey call must precede the FIELD_MAP gate');
 });
 
 test('change handler: media key flush runs BEFORE the FIELD_MAP gate', () => {
-    const flush = src.indexOf("if (el.id === 'dsc_media_tenor_key' || el.id === 'dsc_media_giphy_key') { flushMediaProviderKeys(); return; }");
+    const flush = src.indexOf("if (el.id === 'dsc_media_giphy_key') { flushGiphyKey(); return; }");
     assert.ok(flush !== -1, 'media key flush not wired');
     const gate = gateIndexAfter('dsc_sound_file');
-    assert.ok(flush < gate, 'flushMediaProviderKeys must precede the FIELD_MAP gate');
+    assert.ok(flush < gate, 'flushGiphyKey must precede the FIELD_MAP gate');
 });
 
-test('both media key ids are hidden by updateMediaVisibility, keys synced from localforage', () => {
+test('media key id is hidden by updateMediaVisibility, key synced from localforage', () => {
     const sync = readFileSync(path.join(root, 'src/ui/settings-sync.js'), 'utf8');
-    assert.match(sync, /getElementById\('dsc_media_tenor_key'\)/);
     assert.match(sync, /getElementById\('dsc_media_giphy_key'\)/);
-    assert.match(sync, /getMediaProviderKey\('tenor'\)/);
-    assert.match(sync, /getMediaProviderKey\('giphy'\)/);
-    // visibility: tenor fields hidden unless provider === 'tenor'
-    assert.match(sync, /tenorKey\.hidden = provider !== 'tenor'/);
+    assert.match(sync, /getGiphyKey\(\)/);
+    // visibility: giphy key hidden unless provider === 'giphy'
     assert.match(sync, /giphyKey\.hidden = provider !== 'giphy'/);
 });

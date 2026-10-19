@@ -5,7 +5,7 @@
  * application and prompt-template management (localforage, edit-on-place).
  */
 
-import { state, getCtx, BASE_URL, saveSettings, escapeHtml, getApiKey, setApiKey, getMediaProviderKey, setMediaProviderKey, DSC_FONTS, LF_PROMPTS, log, warn, NUMERIC_SETTINGS, normalizeFiniteNumber, tr } from '../core.js';
+import { state, getCtx, BASE_URL, saveSettings, escapeHtml, getApiKey, setApiKey, getGiphyKey, DSC_FONTS, LF_PROMPTS, log, warn, NUMERIC_SETTINGS, normalizeFiniteNumber, tr } from '../core.js';
 import { getProfiles, getProfileDetails } from '../connection.js';
 
 // ── Settings field map: settings.html id → state prop + input type ──
@@ -221,21 +221,13 @@ function updatePastCommentsVisibility() {
     if (el) el.hidden = !state.settings.includePastComments;
 }
 
-/** Provider-dependent media controls: body, sticker toggle and the per-provider key fields. */
+/** Provider-dependent media controls: body and the per-provider key field. */
 export function updateMediaVisibility() {
-    const provider = state.settings.mediaProvider === 'tenor' || state.settings.mediaProvider === 'giphy'
-        ? state.settings.mediaProvider
-        : '';
+    const provider = state.settings.mediaProvider === 'giphy' ? 'giphy' : '';
     const body = document.getElementById('dsc_media_provider_body');
     if (body) body.hidden = !provider;
     const stickers = document.getElementById('dsc_media_stickers');
     if (stickers) stickers.disabled = !provider;
-    const tenorLabel = document.getElementById('dsc_media_tenor_key_label');
-    const tenorKey = document.getElementById('dsc_media_tenor_key');
-    if (tenorLabel) tenorLabel.hidden = provider !== 'tenor';
-    if (tenorKey) tenorKey.hidden = provider !== 'tenor';
-    const tenorNote = document.getElementById('dsc_media_tenor_note');
-    if (tenorNote) tenorNote.hidden = provider !== 'tenor';
     const giphyLabel = document.getElementById('dsc_media_giphy_key_label');
     const giphyKey = document.getElementById('dsc_media_giphy_key');
     if (giphyLabel) giphyLabel.hidden = provider !== 'giphy';
@@ -244,10 +236,8 @@ export function updateMediaVisibility() {
 
 async function syncMediaKeyFields() {
     try {
-        const tenor = document.getElementById('dsc_media_tenor_key');
-        if (tenor) tenor.value = await getMediaProviderKey('tenor') || '';
         const giphy = document.getElementById('dsc_media_giphy_key');
-        if (giphy) giphy.value = await getMediaProviderKey('giphy') || '';
+        if (giphy) giphy.value = await getGiphyKey() || '';
     } catch { /* skip */ }
 }
 

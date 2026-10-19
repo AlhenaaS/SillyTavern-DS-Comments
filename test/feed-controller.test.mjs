@@ -248,7 +248,7 @@ test('showHtml upgrades media placeholders to real <img> elements', () => {
     const c = makeController();
     // querySelectorAll returns one placeholder; assert it was upgraded
     const placeholder = {
-        _attrs: { 'data-dsc-media-src': 'https://media.tenor.com/a.gif', 'data-dsc-media-type': 'gif', 'data-dsc-media-alt': 'cat' },
+        _attrs: { 'data-dsc-media-src': 'https://media.giphy.com/a.gif', 'data-dsc-media-type': 'gif', 'data-dsc-media-alt': 'cat' },
         getAttribute(k) { return this._attrs[k] ?? null; },
         setAttribute(k, v) { this._attrs[k] = v; },
         appendChild(c2) { placeholder._img = c2; },
@@ -256,9 +256,9 @@ test('showHtml upgrades media placeholders to real <img> elements', () => {
         textContent: '',
     };
     feed.querySelectorAll = (sel) => sel === '[data-dsc-media-src]' ? [placeholder] : [];
-    assert.equal(c.showHtml('<div class="dsc_gif" data-dsc-media-src="https://media.tenor.com/a.gif"></div>'), true);
+    assert.equal(c.showHtml('<div class="dsc_gif" data-dsc-media-src="https://media.giphy.com/a.gif"></div>'), true);
     assert.ok(placeholder._img, 'placeholder received an img child');
-    assert.equal(placeholder._img.src, 'https://media.tenor.com/a.gif');
+    assert.equal(placeholder._img.src, 'https://media.giphy.com/a.gif');
     assert.equal(placeholder._img.getAttribute('loading'), 'lazy');
 });
 

@@ -1,6 +1,6 @@
 // @ts-check
 /**
- * DS Comments — Comment media attachments (GIFs/stickers via Tenor & Giphy,
+ * DS Comments — Comment media attachments (GIFs/stickers via Giphy,
  * memes via memegen.link).
  *
  * The model never outputs URLs. It outputs a search query ("gif"/"sticker")
@@ -8,9 +8,6 @@
  * allow-listed CDN URLs. Every failure path degrades to a text-only comment:
  * media resolution must never break a generation (only an abort propagates).
  *
- * Tenor: POST-less GET https://tenor.googleapis.com/v2/search — transparent
- * media_filter formats (gif_transparent…) serve sticker content, opaque ones
- * (gif…) serve GIFs.
  * Giphy: https://api.giphy.com/v1/gifs/search and /v1/stickers/search.
  * Memes: https://api.memegen.link/templates/ (fetched once per session) and
  * stateless image URLs built from the resolved template id.
@@ -18,7 +15,6 @@
 
 import { warn, trace } from './core.js';
 
-const TENOR_SEARCH_URL = 'https://tenor.googleapis.com/v2/search';
 const GIPHY_SEARCH_URL = 'https://api.giphy.com/v1/gifs/search';
 const GIPHY_STICKER_SEARCH_URL = 'https://api.giphy.com/v1/stickers/search';
 const MEMEGEN_TEMPLATES_URL = 'https://api.memegen.link/templates/';
@@ -28,27 +24,17 @@ const MEMEGEN_IMAGE_URL = 'https://api.memegen.link/images/';
 // every URL against them BEFORE attaching it to a message, and the renderer's
 // upgrade pass re-checks (defence in depth against future call sites).
 const ALLOWED_URL_RES = [
-    /^https:\/\/media\d*\.tenor\.com\//,
     /^https:\/\/media\d*\.giphy\.com\//,
     /^https:\/\/i\.giphy\.com\//,
     /^https:\/\/api\.memegen\.link\/images\//,
 ];
 
-// Media query ceiling: the contract asks for 2-4 word queries; anything this
-// long is a prompt-injection attempt or a stuck model, not a search.
-const MAX_QUERY_CHARS = 120;
-
 // Results to request per search — the resolver picks one at random so
 // regenerating the same post doesn't attach the identical GIF.
 const SEARCH_LIMIT = 5;
 
-// Preferred Tenor media formats, first match wins. mediumgif (~1MB) renders
-// well in a ~380px feed column; full 'gif' can be tens of MB.
-const TENOR_GIF_FORMATS = ['mediumgif', 'gif', 'tinygif'];
-const TENOR_STICKER_FORMATS = ['gif_transparent', 'tinygif_transparent'];
-
-// Map the extension's coarse rating to provider-native values. 'off' means
-// unfiltered: Tenor has a native 'off'; Giphy's most permissive is 'r'.
+// Map the extension's coarse rating to Giphy-native values. 'off' (unfiltered)
+// maps to Giphy's most permissive rating 'r'.
 const GIPHY_RATING = { low: 'g', medium: 'pg', high: 'pg-13', off: 'r' };
 
 /**
@@ -222,32 +208,6 @@ export function buildMemeUrl(template, spec) {
 
 // ── Provider searches ──
 
-async function searchTenor(query, { apiKey, rating, sticker, signal }) {
-    const params = new URLSearchParams({
-        q: query,
-        key: apiKey,
-        client_key: 'dscomments',
-        limit: String(SEARCH_LIMIT),
-        random: 'true',
-        media_filter: (sticker ? TENOR_STICKER_FORMATS : TENOR_GIF_FORMATS).join(','),
-    });
-    if (rating !== 'off') params.set('rating', rating);
-    const response = await fetch(`${TENOR_SEARCH_URL}?${params}`, { method: 'GET', signal });
-    if (!response.ok) throw new Error(`tenor: HTTP ${response.status}`);
-    const payload = await response.json();
-    const results = Array.isArray(payload?.results) ? payload.results : [];
-    const formats = sticker ? TENOR_STICKER_FORMATS : TENOR_GIF_FORMATS;
-    for (const result of results) {
-        const media = result?.media_formats;
-        if (!media) continue;
-        for (const fmt of formats) {
-            const url = media[fmt]?.url;
-            if (typeof url === 'string' && url) return url;
-        }
-    }
-    return null;
-}
-
 async function searchGiphy(query, { apiKey, rating, sticker, signal }) {
     const params = new URLSearchParams({
         api_key: apiKey,
@@ -295,7 +255,7 @@ const _mediaAlt = (type, request) => {
  * AbortError (a cancelled generation must surface as cancelled).
  *
  * @param {Array<object>} messages parser output (mutated in place)
- * @param {{ provider?: string, tenorKey?: string, giphyKey?: string,
+ * @param {{ provider?: string, giphyKey?: string,
  *           rating?: string, stickersEnabled?: boolean, memeEnabled?: boolean,
  *           signal?: AbortSignal }} opts
  * @returns {Promise<number>} how many messages got media attached
@@ -305,8 +265,8 @@ export async function resolveCommentMedia(messages, opts = {}) {
     const signal = opts.signal ?? null;
     const rating = ['off', 'low', 'medium', 'high'].includes(opts.rating) ? opts.rating : 'medium';
 
-    let provider = opts.provider === 'tenor' || opts.provider === 'giphy' ? opts.provider : '';
-    const apiKey = provider === 'tenor' ? String(opts.tenorKey ?? '') : String(opts.giphyKey ?? '');
+    let provider = opts.provider === 'giphy' ? opts.provider : '';
+    const apiKey = String(opts.giphyKey ?? '');
     let warned = false;
     const warnOnce = (msg, ...rest) => {
         if (warned) return;
@@ -345,9 +305,7 @@ export async function resolveCommentMedia(messages, opts = {}) {
                     if (!template) throw new Error(`meme template not found: ${request.spec?.template}`);
                     cache.set(cacheKey, buildMemeUrl(template, request.spec));
                 } else {
-                    const url = provider === 'tenor'
-                        ? await searchTenor(request.query, { apiKey, rating, sticker: request.type === 'sticker', signal })
-                        : await searchGiphy(request.query, { apiKey, rating, sticker: request.type === 'sticker', signal });
+                    const url = await searchGiphy(request.query, { apiKey, rating, sticker: request.type === 'sticker', signal });
                     cache.set(cacheKey, url);
                 }
             } catch (e) {

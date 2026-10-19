@@ -75,7 +75,7 @@ function repairMemeUrl(url) {
         const queryIdx = url.indexOf('?');
         const path = decodeURIComponent(queryIdx === -1 ? url : url.slice(0, queryIdx));
         if (/[^\x00-\x7F]/.test(path)) {
-            return `${url}?font=notosans`;
+            return `${url}${url.includes('?') ? '&' : '?'}font=notosans`;
         }
     } catch { /* malformed percent-encoding — keep the original URL */ }
     return url;
