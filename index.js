@@ -8,7 +8,7 @@ import {
     state, MODULE_NAME, DISPLAY_NAME, META_KEY, LF_PROMPTS, LF_API_KEY, LF_SOUND, LF_PINNED, LF_EVENTLOG,
     defaultSettings, FOLDER_NAME,
     loadSettings, saveSettings, flushSettings, getCtx, log, trace, warn, error, tr,
-    setApiKey, flushApiKey, showConfirmModal, showInputModal, debounce, bumpGenerationEpoch,
+    setApiKey, flushApiKey, setMediaProviderKey, flushMediaProviderKeys, showConfirmModal, showInputModal, debounce, bumpGenerationEpoch,
     observePersistence, dumpRestoreLog, clearRestoreLog, collectRuntimeInfo,
     dumpDebugLog, clearDebugLog,
 } from './src/core.js';
@@ -572,9 +572,14 @@ function bindSettingsPanelEvents() {
             }
             return;
         }
+        // Media provider keys are localforage-backed password fields, NOT
+        // FIELD_MAP settings — they must flush before the cfg gate below
+        // (which would silently drop their change events).
+        if (el.id === 'dsc_media_tenor_key' || el.id === 'dsc_media_giphy_key') { flushMediaProviderKeys(); return; }
         const cfg = FIELD_MAP[el.id];
         if (!cfg) return;
         if (el.id === 'dsc_apikey') { flushApiKey(); return; }
+        if (el.id === 'dsc_media_provider') syncSettingsSections();
         if (el.id === 'dsc_template') {
             state.settings.promptTemplate = el.value;
             saveSettings();
@@ -625,6 +630,10 @@ function bindSettingsPanelEvents() {
     // input events (text, number, range, textarea)
     root.addEventListener('input', (e) => {
         const el = e.target;
+        // Localforage-backed media keys first: the FIELD_MAP gate below would
+        // otherwise drop their input events (they are not registered settings).
+        if (el.id === 'dsc_media_tenor_key') { setMediaProviderKey('tenor', el.value); return; }
+        if (el.id === 'dsc_media_giphy_key') { setMediaProviderKey('giphy', el.value); return; }
         const cfg = FIELD_MAP[el.id];
         if (!cfg) return;
         if (el.id === 'dsc_apikey') { setApiKey(el.value); return; }
@@ -938,6 +947,7 @@ function onVisibilityChange() {
     if (document.visibilityState !== 'hidden') return;
     flushSettings();
     flushApiKey();
+    flushMediaProviderKeys();
     flushPinnedPersist();
     flushEventLog();
     observePersistence(
