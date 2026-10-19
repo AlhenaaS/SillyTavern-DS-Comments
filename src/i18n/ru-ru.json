@@ -28,7 +28,7 @@
     "dscomments.template.reset": "Вайб сброшен к main",
     "dscomments.template.deleteConfirm": "Удалить этот шаблон?",
     "dscomments.template.deleted": "Шаблон удалён",
-    "dscomments.template.reservedName": "Имя «main» зарезервировано для встроенного шаблона.",
+    "dscomments.template.reservedName": "Это имя зарезервировано для встроенного шаблона.",
     "dscomments.template.emptySave": "Шаблон пустой — сначала введи текст.",
     "dscomments.template.notFound": "не найден",
     "dscomments.template.notFoundText": "Шаблон «{name}» пока недоступен. Выбор сохранён — текст появится, как только шаблон станет доступен.",

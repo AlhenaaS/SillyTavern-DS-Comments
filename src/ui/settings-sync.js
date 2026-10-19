@@ -302,8 +302,9 @@ let _promptEditorReq = 0;
 // Built-in templates: served from /chat-styles/*.md, cannot be deleted or reset.
 const BUILTIN_TEMPLATES = {
     main: 'main',
+    test: 'test',
 };
-const isBuiltinTemplate = (name) => Object.prototype.hasOwnProperty.call(BUILTIN_TEMPLATES, name);
+export const isBuiltinTemplate = (name) => Object.prototype.hasOwnProperty.call(BUILTIN_TEMPLATES, name);
 const _builtinCache = {};
 
 /**

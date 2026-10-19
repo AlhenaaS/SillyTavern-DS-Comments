@@ -83,7 +83,7 @@ export const defaultSettings = Object.freeze({
     // server mapping prompt-hacks the schema (claude/deepseek/zai/...).
     structuredOutput: 'off',
 
-    // prompt template: builtin 'main' (chat-styles/main.md — vibe) + user copies.
+    // prompt template: builtins in chat-styles/*.md ('main', 'test' — vibe) + user copies.
     // The contract (header + FORMAT RULES) lives in code (prompt-contract.js).
     promptTemplate: 'main',
     promptTemplates: {},              // { name: text } — server-synced extension settings (was browser-local localforage)
